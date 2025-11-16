@@ -9,7 +9,7 @@ use std::{
 
 #[derive(Debug, Clone, Config)]
 pub struct DownloadConfig {
-    #[config(default = Some(NonZero::new(8).unwrap()))]
+    #[config(default = Some(NonZero::new(32).unwrap()))]
     pub threads: Option<NonZeroUsize>,
 
     #[config(default = Some(Arc::from("")))]

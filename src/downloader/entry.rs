@@ -33,7 +33,6 @@ pub enum DownloadEvent {
 
 #[derive(Debug)]
 pub struct DownloadEntryInner {
-    pub gid: Gid,
     pub url: Url,
     pub config: DownloadConfig,
     pub global_config: Arc<SpinMutex<DownloadConfig>>,
@@ -71,21 +70,22 @@ impl DownloadEntryInner {
 
 #[derive(Debug, Clone)]
 pub struct DownloadEntry {
+    pub gid: Gid,
     pub inner: Arc<SpinMutex<DownloadEntryInner>>,
+    pub add_options: AddOptions,
 }
 impl DownloadEntry {
     pub fn new(
         gid: Gid,
-        url: Url,
-        config: DownloadConfig,
+        option: AddOptions,
         global_config: Arc<SpinMutex<DownloadConfig>>,
     ) -> Self {
         let (tx, event_chain) = kanal::unbounded_async();
         Self {
+            gid,
             inner: Arc::new(SpinMutex::new(DownloadEntryInner {
-                gid,
-                url,
-                config,
+                url: option.url.clone(),
+                config: option.config.clone(),
                 global_config,
                 info: None,
                 push_progress: Vec::new(),
@@ -96,10 +96,8 @@ impl DownloadEntry {
                 download_result: None,
                 handle: None,
             })),
+            add_options: option,
         }
-    }
-    pub fn gid(&self) -> Gid {
-        self.inner.lock().gid
     }
     pub fn abort(&self) {
         self.inner.lock().abort();
@@ -231,6 +229,25 @@ impl DownloadEntry {
         self.inner.lock().handle.replace(handle);
         Ok(())
     }
+}
+
+impl PartialEq for DownloadEntry {
+    fn eq(&self, other: &Self) -> bool {
+        self.gid == other.gid
+    }
+}
+impl Eq for DownloadEntry {}
+impl PartialEq<Gid> for DownloadEntry {
+    fn eq(&self, other: &Gid) -> bool {
+        self.gid == *other
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AddOptions {
+    pub url: Url,
+    pub immediate_download: bool,
+    pub config: DownloadConfig,
 }
 
 pub fn get_client(config: &DownloadConfig) -> Result<Client, reqwest::Error> {
